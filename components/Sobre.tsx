@@ -90,7 +90,7 @@ export function Sobre(props: Props) {
         </h1>
       </div>
 
-      <div className="entrada" style={{ animationDelay: "0.15s" }}>
+      <div className="entrada w-full" style={{ animationDelay: "0.15s" }}>
         <div className={`sobre-flota ${activo ? "pausado" : ""}`}>
           <button
             type="button"

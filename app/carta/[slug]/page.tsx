@@ -24,7 +24,7 @@ export default async function CartaPage(props: PageProps<"/carta/[slug]">) {
 
   return (
     <main
-      className={`acc-${c.acento} mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-6 pb-16 sm:px-10`}
+      className={`acc-${c.acento} mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pb-16 sm:px-10`}
     >
       <header className="no-print flex items-center justify-between py-8">
         <Marca />
