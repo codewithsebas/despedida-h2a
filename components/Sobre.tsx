@@ -1,9 +1,20 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { iniciales, type Companero } from "@/lib/companeros";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { abrirCarta } from "@/app/carta/[slug]/acciones";
+import {
+  iniciales,
+  type ContenidoCarta,
+  type DatosPublicos,
+} from "@/lib/tipos";
 
-type Props = Companero & {
+type Props = DatosPublicos & {
   firma: string;
   fecha: string;
 };
@@ -11,17 +22,22 @@ type Props = Companero & {
 /**
  * Secuencia de apertura:
  *  cerrado   → sobre flotando, sello intacto
+ *  pin       → se pide el PIN; el servidor lo valida y devuelve la carta
  *  abriendo  → el sello se rompe, la solapa gira en 3D y la hoja sube
  *  saliendo  → el sobre cae y se desvanece; la hoja queda sola
  *  carta     → la hoja se expande (FLIP) hasta convertirse en la carta
  */
-type Fase = "cerrado" | "abriendo" | "saliendo" | "carta";
+type Fase = "cerrado" | "pin" | "abriendo" | "saliendo" | "carta";
 
-const T_SALIENDO = 2150; // ms desde el clic
+const T_SALIENDO = 2150; // ms desde el inicio de la apertura
 const T_CARTA = 2750;
 const T_MORPH = 850;
+const LARGO_PIN = 4;
 
 const COLORES = ["#cd097c", "#8b00c7", "#0aceff", "#ffffff", "#570037"];
+
+/** Recuerda el PIN durante la pestaña para no pedirlo al recargar. */
+const clavePin = (slug: string) => `h2a-pin:${slug}`;
 
 function reduceMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -45,16 +61,53 @@ function lanzarConfeti() {
 
 export function Sobre(props: Props) {
   const [fase, setFase] = useState<Fase>("cerrado");
+  const [carta, setCarta] = useState<ContenidoCarta | null>(null);
   const [desde, setDesde] = useState<DOMRect | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
+  const [verificando, startTransition] = useTransition();
   const papelRef = useRef<HTMLSpanElement>(null);
 
-  function abrir() {
-    if (fase !== "cerrado") return;
-    if (reduceMotion()) {
-      setFase("carta");
+  function iniciarApertura(contenido: ContenidoCarta) {
+    setCarta(contenido);
+    setFase(reduceMotion() ? "carta" : "abriendo");
+  }
+
+  function verificar(pin: string, recordado = false) {
+    setError(null);
+    startTransition(async () => {
+      const r = await abrirCarta(props.slug, pin);
+      if (r.ok) {
+        try {
+          sessionStorage.setItem(clavePin(props.slug), pin);
+        } catch {}
+        iniciarApertura(r.carta);
+        return;
+      }
+      if (recordado) {
+        // El PIN guardado ya no sirve (p. ej. se cambió): se pide de nuevo.
+        try {
+          sessionStorage.removeItem(clavePin(props.slug));
+        } catch {}
+        setFase("pin");
+        return;
+      }
+      setError(r.error);
+      setIntento((n) => n + 1);
+    });
+  }
+
+  function tocarSobre() {
+    if (fase !== "cerrado" || verificando) return;
+    let guardado: string | null = null;
+    try {
+      guardado = sessionStorage.getItem(clavePin(props.slug));
+    } catch {}
+    if (guardado) {
+      verificar(guardado, true);
       return;
     }
-    setFase("abriendo");
+    setFase("pin");
   }
 
   useEffect(() => {
@@ -71,16 +124,16 @@ export function Sobre(props: Props) {
     }
   }, [fase]);
 
-  if (fase === "carta") {
-    return <Carta {...props} desde={desde} />;
+  if (fase === "carta" && carta) {
+    return <Carta {...props} {...carta} desde={desde} />;
   }
 
-  const activo = fase !== "cerrado";
+  const abriendo = fase === "abriendo" || fase === "saliendo";
 
   return (
     <div className="flex flex-col items-center gap-10">
       <div
-        className={`entrada text-center transition-all duration-700 ${activo ? "-translate-y-3 opacity-0" : ""}`}
+        className={`entrada text-center transition-all duration-700 ${abriendo ? "-translate-y-3 opacity-0" : ""}`}
       >
         <p className="font-display text-sm uppercase tracking-[0.35em] text-white/45">
           Una carta para ti
@@ -91,12 +144,12 @@ export function Sobre(props: Props) {
       </div>
 
       <div className="entrada w-full" style={{ animationDelay: "0.15s" }}>
-        <div className={`sobre-flota ${activo ? "pausado" : ""}`}>
+        <div className={`sobre-flota ${abriendo ? "pausado" : ""}`}>
           <button
             type="button"
-            className={`sobre ${fase}`}
-            onClick={abrir}
-            disabled={activo}
+            className={`sobre ${fase} ${verificando ? "verificando" : ""}`}
+            onClick={tocarSobre}
+            disabled={fase !== "cerrado" || verificando}
             aria-label={`Abrir la carta para ${props.nombre}`}
           >
             <span className="sobre-sombra" />
@@ -118,12 +171,130 @@ export function Sobre(props: Props) {
         </div>
       </div>
 
-      <p
-        className={`font-display text-sm text-white/50 transition-opacity duration-500 ${activo ? "opacity-0" : "pista"}`}
-      >
-        Toca el sobre para abrirlo
-      </p>
+      {fase === "pin" ? (
+        <EntradaPin
+          key={intento}
+          error={error}
+          agitar={intento > 0}
+          verificando={verificando}
+          onCompleto={(pin) => verificar(pin)}
+        />
+      ) : (
+        <p
+          className={`font-display text-sm text-white/50 transition-opacity duration-500 ${fase === "cerrado" && !verificando ? "pista" : "opacity-0"}`}
+        >
+          Toca el sobre para abrirlo
+        </p>
+      )}
     </div>
+  );
+}
+
+/** Cuatro casillas para el PIN: avanza solo, admite pegar y retroceder. */
+function EntradaPin({
+  error,
+  agitar,
+  verificando,
+  onCompleto,
+}: {
+  error: string | null;
+  agitar: boolean;
+  verificando: boolean;
+  onCompleto: (pin: string) => void;
+}) {
+  const [digitos, setDigitos] = useState<string[]>(() =>
+    Array(LARGO_PIN).fill(""),
+  );
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+  const completo = digitos.every((d) => d !== "");
+
+  // Al aparecer, el panel se desplaza a la vista (en pantallas bajas queda abajo).
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, []);
+
+  // Las casillas se deshabilitan mientras se verifica; al terminar, el foco
+  // vuelve a la primera vacía.
+  useEffect(() => {
+    if (verificando) return;
+    const vacia = refs.current.find((el) => el && el.value === "");
+    (vacia ?? refs.current[0])?.focus();
+  }, [verificando]);
+
+  function escribir(i: number, valor: string) {
+    const nuevos = valor.replace(/\D/g, "");
+    const siguiente = [...digitos];
+    if (nuevos === "") {
+      siguiente[i] = "";
+      setDigitos(siguiente);
+      return;
+    }
+    // Admite pegar o autocompletar varios dígitos a la vez.
+    let j = i;
+    for (const d of nuevos) {
+      if (j >= LARGO_PIN) break;
+      siguiente[j++] = d;
+    }
+    setDigitos(siguiente);
+    refs.current[Math.min(j, LARGO_PIN - 1)]?.focus();
+    if (siguiente.every((d) => d !== "")) onCompleto(siguiente.join(""));
+  }
+
+  function tecla(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && digitos[i] === "" && i > 0) {
+      e.preventDefault();
+      const siguiente = [...digitos];
+      siguiente[i - 1] = "";
+      setDigitos(siguiente);
+      refs.current[i - 1]?.focus();
+    } else if (e.key === "ArrowLeft" && i > 0) {
+      refs.current[i - 1]?.focus();
+    } else if (e.key === "ArrowRight" && i < LARGO_PIN - 1) {
+      refs.current[i + 1]?.focus();
+    }
+  }
+
+  return (
+    <form
+      ref={formRef}
+      className={`pin-panel ${agitar ? "agitar" : ""}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (completo && !verificando) onCompleto(digitos.join(""));
+      }}
+    >
+      <label htmlFor="pin-0" className="pin-titulo">
+        Ingresa tu PIN para abrir la carta
+      </label>
+      <div className="pin-cajas">
+        {digitos.map((d, i) => (
+          <input
+            key={i}
+            id={`pin-${i}`}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            className={`pin-caja ${d ? "llena" : ""}`}
+            type="text"
+            inputMode="numeric"
+            autoComplete={i === 0 ? "one-time-code" : "off"}
+            pattern="[0-9]*"
+            maxLength={LARGO_PIN}
+            value={d}
+            disabled={verificando}
+            aria-label={`Dígito ${i + 1} de ${LARGO_PIN}`}
+            aria-invalid={error ? true : undefined}
+            onChange={(e) => escribir(i, e.target.value)}
+            onKeyDown={(e) => tecla(i, e)}
+            onFocus={(e) => e.target.select()}
+          />
+        ))}
+      </div>
+      <p className={`pin-mensaje ${error ? "error" : ""}`} role="alert">
+        {verificando ? "Verificando…" : (error ?? "Son 4 dígitos.")}
+      </p>
+    </form>
   );
 }
 
@@ -140,7 +311,7 @@ function Carta({
   firma,
   fecha,
   desde,
-}: Props & { desde: DOMRect | null }) {
+}: Props & ContenidoCarta & { desde: DOMRect | null }) {
   const cartaRef = useRef<HTMLElement>(null);
   const morphRef = useRef<HTMLDivElement>(null);
   const [listo, setListo] = useState(!desde);

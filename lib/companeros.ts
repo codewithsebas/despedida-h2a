@@ -8,29 +8,22 @@
 //   frase     → cita destacada
 //   cierre    → deseos para el futuro
 //   despedida → fórmula antes de la firma
+//
+// Solo servidor: el texto de las cartas nunca se envía al navegador
+// hasta que se valida el PIN (ver app/carta/[slug]/acciones.ts).
+
+import "server-only";
+import type {
+  Companero,
+  ContenidoCarta,
+  DatosPublicos,
+} from "./tipos";
+
+export { iniciales } from "./tipos";
+export type { Acento, Companero, ContenidoCarta, DatosPublicos, Gracia } from "./tipos";
 
 export const FIRMA = "Joab";
 export const FECHA = "Noviembre de 2026";
-
-export type Acento = "magenta" | "violeta" | "turquesa";
-
-export type Gracia = { titulo: string; texto: string };
-
-export type Companero = {
-  slug: string;
-  nombre: string;
-  primerNombre: string;
-  /** Rol en H2A, se muestra en el sobre y en la carta */
-  cargo: string;
-  acento: Acento;
-  /** Palabra que resume lo que esa persona deja en el equipo */
-  palabra: string;
-  apertura: string;
-  gracias: Gracia[];
-  frase: string;
-  cierre: string;
-  despedida: string;
-};
 
 export const COMPANEROS: Companero[] = [
   // ---------- Dirección ----------
@@ -363,7 +356,14 @@ export function getCompanero(slug: string) {
   return COMPANEROS.find((c) => c.slug === slug);
 }
 
-export function iniciales(nombre: string) {
-  const partes = nombre.split(" ").filter(Boolean);
-  return (partes[0][0] + (partes[1]?.[0] ?? "")).toUpperCase();
+/** Solo lo que se puede mostrar sin PIN. */
+export function datosPublicos(c: Companero): DatosPublicos {
+  const { slug, nombre, primerNombre, cargo, acento, palabra } = c;
+  return { slug, nombre, primerNombre, cargo, acento, palabra };
+}
+
+/** El texto de la carta (se entrega solo tras validar el PIN). */
+export function contenidoCarta(c: Companero): ContenidoCarta {
+  const { apertura, gracias, frase, cierre, despedida } = c;
+  return { apertura, gracias, frase, cierre, despedida };
 }

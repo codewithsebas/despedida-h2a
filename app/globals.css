@@ -620,6 +620,84 @@ body {
   .carta { box-shadow: none; width: 100%; }
 }
 
+/* ---------- PIN ---------- */
+.pin-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation: aparecer 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.pin-panel.agitar {
+  animation: agitar 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+.pin-titulo {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.6);
+  text-align: center;
+}
+.pin-cajas {
+  display: flex;
+  gap: 0.75rem;
+}
+.pin-caja {
+  width: 3.5rem;
+  height: 4.25rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  background: rgb(255 255 255 / 0.05);
+  backdrop-filter: blur(8px);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 500;
+  color: #fff;
+  caret-color: var(--acc);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, transform 0.2s;
+}
+.pin-caja:focus {
+  outline: none;
+  border-color: var(--acc);
+  background: rgb(255 255 255 / 0.08);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 25%, transparent);
+  transform: translateY(-2px);
+}
+.pin-caja.llena {
+  border-color: color-mix(in srgb, var(--acc) 60%, transparent);
+}
+.pin-caja:disabled { opacity: 0.6; }
+.pin-caja[aria-invalid="true"] { border-color: #ff5ca8; }
+.pin-mensaje {
+  min-height: 1.25rem;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  color: rgb(255 255 255 / 0.45);
+}
+.pin-mensaje.error { color: #ff7ab8; }
+
+@keyframes agitar {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
+
+/* Sello latiendo mientras el servidor verifica el PIN */
+.sobre.verificando .sobre-sello { animation: latido 0.9s ease-in-out infinite; }
+.sobre.pin .sobre-sello { box-shadow: 0 0 0 6px color-mix(in srgb, var(--acc) 25%, transparent), 0 6px 20px color-mix(in srgb, var(--acc) 45%, transparent); }
+@keyframes latido {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@media (max-width: 480px) {
+  .pin-cajas { gap: 0.6rem; }
+  .pin-caja { width: 3.1rem; height: 3.8rem; font-size: 1.6rem; }
+}
+
 /* Ajustes de la carta en móvil */
 @media (max-width: 480px) {
   .gracias li { grid-template-columns: 2.25rem 1fr; gap: 0 0.5rem; }

@@ -3,7 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Marca } from "@/components/Marca";
 import { Sobre } from "@/components/Sobre";
-import { COMPANEROS, FECHA, FIRMA, getCompanero } from "@/lib/companeros";
+import {
+  COMPANEROS,
+  FECHA,
+  FIRMA,
+  datosPublicos,
+  getCompanero,
+} from "@/lib/companeros";
 
 export function generateStaticParams() {
   return COMPANEROS.map((c) => ({ slug: c.slug }));
@@ -37,7 +43,8 @@ export default async function CartaPage(props: PageProps<"/carta/[slug]">) {
       </header>
 
       <div className="flex flex-1 flex-col justify-center py-6">
-        <Sobre {...c} firma={FIRMA} fecha={FECHA} />
+        {/* Solo datos públicos: el texto llega tras validar el PIN */}
+        <Sobre {...datosPublicos(c)} firma={FIRMA} fecha={FECHA} />
       </div>
     </main>
   );
