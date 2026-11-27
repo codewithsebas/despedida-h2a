@@ -10,6 +10,8 @@ export type DatosPublicos = {
   slug: string;
   nombre: string;
   primerNombre: string;
+  /** Cómo se le llama de cariño en la carta (opcional, reemplaza al nombre) */
+  apodo?: string;
   /** Rol en H2A, se muestra en el sobre y en la carta */
   cargo: string;
   acento: Acento;

@@ -129,6 +129,7 @@ export const COMPANEROS: Companero[] = [
     slug: "reuth-onate",
     nombre: "Reuth Afef Oñate Díaz",
     primerNombre: "Reuth",
+    apodo: "Viejo Reuth",
     cargo: "Líder de Desarrollo",
     acento: "magenta",
     palabra: "Guía",
@@ -358,8 +359,8 @@ export function getCompanero(slug: string) {
 
 /** Solo lo que se puede mostrar sin PIN. */
 export function datosPublicos(c: Companero): DatosPublicos {
-  const { slug, nombre, primerNombre, cargo, acento, palabra } = c;
-  return { slug, nombre, primerNombre, cargo, acento, palabra };
+  const { slug, nombre, primerNombre, apodo, cargo, acento, palabra } = c;
+  return { slug, nombre, primerNombre, apodo, cargo, acento, palabra };
 }
 
 /** El texto de la carta (se entrega solo tras validar el PIN). */

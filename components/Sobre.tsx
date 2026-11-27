@@ -139,7 +139,7 @@ export function Sobre(props: Props) {
           Una carta para ti
         </p>
         <h1 className="mt-3 font-display text-4xl font-medium sm:text-6xl">
-          {props.primerNombre}
+          {props.apodo ?? props.primerNombre}
         </h1>
       </div>
 
@@ -156,7 +156,7 @@ export function Sobre(props: Props) {
             <span className="sobre-cuerpo" />
             <span className="sobre-papel" ref={papelRef}>
               <span className="papel-mini-saludo">
-                Hola, <b>{props.primerNombre}</b>,
+                Hola, <b>{props.apodo ?? props.primerNombre}</b>,
               </span>
               <span className="papel-mini-lineas" />
             </span>
@@ -301,6 +301,7 @@ function EntradaPin({
 function Carta({
   nombre,
   primerNombre,
+  apodo,
   cargo,
   palabra,
   apertura,
@@ -386,7 +387,7 @@ function Carta({
               Para {nombre} · {cargo}
             </p>
             <h1 className="mt-3 font-display text-4xl leading-tight font-light text-[#1d0a26] sm:text-5xl">
-              Hola, <span className="acc-text font-medium">{primerNombre}</span>,
+              Hola, <span className="acc-text font-medium">{apodo ?? primerNombre}</span>,
             </h1>
           </div>
 
